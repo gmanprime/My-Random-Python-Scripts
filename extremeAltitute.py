@@ -1,5 +1,3 @@
-!pip install qgis
-
 import processing
 from qgis.core import QgsProject, QgsProcessing
 

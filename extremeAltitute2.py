@@ -34,8 +34,8 @@ joinedLayer = processing.run("native:joinattributesbylocation", {
 
 
 vectJoinedLayer = QgsVectorLayer(joinedLayer['OUTPUT'], "joinedLayer", "ogr")
-QgsProject.instance().removeMapLayer(vectJoinedLayer)#removes joined layer from map
-QgsProject.instance().addMapLayer(vectJoinedLayer)
+# QgsProject.instance().removeMapLayer(vectJoinedLayer)#removes joined layer from map
+# QgsProject.instance().addMapLayer(vectJoinedLayer)
 
 # *********************************************************
 #classify features based on DMA
@@ -85,10 +85,12 @@ for dma in dmaDict:
 pp(outputFeatures[0])
     
 # Create a new layer from the list of features
+#
 layer = QgsVectorLayer("Point?crs=EPSG:20137&memory", "min max layer", "memory")
 
 # Add the features to the layer
-layer.dataProvider().addAttributes(joinedLayer['OUTPUT'].fields())
+pp(joinedLayer['OUTPUT'].__dir__())
+layer.dataProvider().addAttributes(joinedLayer[0].fields())
 layer.dataProvider().addFeatures(outputFeatures)
 
 # Add the layer to the current project
