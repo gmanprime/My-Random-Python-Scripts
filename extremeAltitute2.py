@@ -113,8 +113,10 @@ minMaxLayer = QgsVectorLayer("Point?crs=EPSG:20137&memory",
                              "min max layer", "memory")
 
 # Add the features to the layer
-minMaxLayer.dataProvider().addAttributes(joinedLayer[0].fields())
-minMaxLayer.dataProvider().addFeatures(outputFeatures)
+# minMaxLayer.dataProvider().addAttributes(joinedLayer[0].fields())
+print(joinedLayer)
+# minMaxLayer.dataProvider().addAttributes(joinedLayer.fields())
+# minMaxLayer.dataProvider().addFeatures(outputFeatures)
 
-# Add the layer to the current project
-QgsProject.instance().addMapLayer(minMaxLayer)
+# # Add the layer to the current project
+# QgsProject.instance().addMapLayer(minMaxLayer)
