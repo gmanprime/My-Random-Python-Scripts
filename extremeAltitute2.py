@@ -91,7 +91,9 @@ def makeFeat(dma, elevation, stat):
 
 for dma in dmaDict:
     minFeature = min(dmaDict[dma], key=lambda f: f['elevation'])
-    maxFeature = max(dmaDict[dma], key=lambda f: f['elevation'])
+    # minFeature = min(dmaDict.values(),
+    #                  key=lambda feature: feature['elevation'])
+    maxFeature = max(dmaDict[dma], key=lambda feature: feature['elevation'])
 
     # find the feature with the closest elevation to the mean
     meanElevation = sum([f['elevation']
@@ -108,7 +110,7 @@ pp(outputFeatures[0])
 # Create a new layer from the list of features
 #
 minMaxLayer = QgsVectorLayer("Point?crs=EPSG:20137&memory",
-                       "min max layer", "memory")
+                             "min max layer", "memory")
 
 # Add the features to the layer
 minMaxLayer.dataProvider().addAttributes(joinedLayer[0].fields())
