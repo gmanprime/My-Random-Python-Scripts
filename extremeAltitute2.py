@@ -58,18 +58,14 @@ for feature in joinedLayer['OUTPUT'].getFeatures():
     dmaDict[dma].append(feature)
 
 # *********************************************************
-# find the features with the biggest and smallest elevation values
-
-# These are the features that have been determined to be the biggest smallest and most average in terms of elevation
-# this is the variable where these features are put
+# this section find the features with the biggest and smallest elevation values
+# outputFeatures is the variable where these features are put
 outputFeatures = []
 
 # this function can be used to make new features similar in pattern to the above layers
 
 for dma in dmaDict:
     minFeature = min(dmaDict[dma], key=lambda f: f['elevation'])
-    # minFeature = min(dmaDict.values(),
-    #                  key=lambda feature: feature['elevation'])
     maxFeature = max(dmaDict[dma], key=lambda feature: feature['elevation'])
 
     # find the feature with the closest elevation to the mean
