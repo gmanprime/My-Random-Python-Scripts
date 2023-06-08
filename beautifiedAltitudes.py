@@ -1,3 +1,6 @@
+import processing
+from pprint import pprint as pp
+
 # Get the active polygon layer.
 dmaBoundary = QgsProject.instance().mapLayersByName('DMA_Boundary_V3')[0]
 

@@ -1,4 +1,6 @@
 import processing
+import random
+import string
 from pprint import pprint as pp
 from qgis.core import QgsProject, QgsProcessing
 
@@ -8,6 +10,14 @@ dmaBoundary = QgsProject.instance().mapLayersByName('DMA_Boundary_V3')[0]
 
 # get the raster layer
 rasterLayer = QgsProject.instance().mapLayersByName('Addis_Ababa_Elevation')[0]
+
+
+def alphaNumGen(size):
+    # get letters as a list
+    letters = string.ascii_letters + string.digits
+    # return a random string of chars
+    return ''.join(random.choices(letters, k=size))
+
 
 # *********************************************************
 # create a point layer from the values of the raster layer
@@ -35,6 +45,21 @@ joinedLayer = processing.run("native:joinattributesbylocation", {
     'OUTPUT': 'TEMPORARY_OUTPUT'
 })
 
+# Create a new field called "id" and add it to joinedLayer layer
+idField = QgsField("xid", QVariant.Int)
+joinedLayer['OUTPUT'].dataProvider().addAttributes([idField])
+joinedLayer['OUTPUT'].updateFields()
+
+for feature in joinedLayer['OUTPUT'].getFeatures():
+    joinedLayer['OUTPUT'].dataProvider().setFields(
+        feature.id(),
+        joinedLayer['OUTPUT'].fieldNameIndex('xid'),
+        alphaNumGen(5)
+    )
+
+
+# TODO: need to create a random ID generator for the joinedlayerid
+
 # Add the converted geoLayer to the project for visibility
 QgsProject.instance().addMapLayer(joinedLayer['OUTPUT'])
 
@@ -46,8 +71,9 @@ QgsProject.instance().addMapLayer(joinedLayer['OUTPUT'])
 dmaDict = {}  # create a dictionary that will hold the data classified further by using DMA's as key classifiers
 
 # classify every feature
+# ? might be a source of error
 for feature in joinedLayer['OUTPUT'].getFeatures():
-    dma = feature["DMA"]  # get DMA value of the current feature
+    dma = feature["DMA"]
 
     # checks to see if the DMA already exists in the dmaDict dictionary
     # and if not, adds it as a possible empty list
@@ -66,7 +92,7 @@ outputFeatures = []
 
 for dma in dmaDict:
     minFeature = min(dmaDict[dma], key=lambda f: f['elevation'])
-    maxFeature = max(dmaDict[dma], key=lambda feature: feature['elevation'])
+    maxFeature = max(dmaDict[dma], key=lambda f: f['elevation'])
 
     # find the feature with the closest elevation to the mean
     meanElevation = sum([f['elevation']
@@ -79,7 +105,6 @@ for dma in dmaDict:
     outputFeatures.extend([minFeature, maxFeature, avgFeature])
 
 # Create a new layer from the list of features
-#
 minMaxLayer = QgsVectorLayer("Point?crs=EPSG:20137&memory",
                              "min max layer", "memory")
 
