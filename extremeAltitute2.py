@@ -46,21 +46,27 @@ joinedLayer = processing.run("native:joinattributesbylocation", {
 })
 
 # Create a new field called "id" and add it to joinedLayer layer
-idField = QgsField("xid", QVariant.Int)
-joinedLayer['OUTPUT'].dataProvider().addAttributes([idField])
+xid = QgsField("xid", QVariant.String)
+joinedLayer['OUTPUT'].dataProvider().addAttributes([xid])
+
+
+for i, feature in enumerate(joinedLayer['OUTPUT'].getFeatures()):
+    # Get the index of the xid field
+    # xidIndex = joinedLayer['OUTPUT'].fields().indexOf('xid')
+    # Set the id field for the feature
+    if i >= 5 and i <= 10:
+        print(feature.attributes())
+        feature.setAttribute(2, alphaNumGen(8))
+        # feature['xid'] = alphaNumGen(8)
+    else:
+        pass
+
+# complete: need to create a random ID generator for the joinedlayer id
+
+# update fields for the joinedlayer in order to get changes from above
 joinedLayer['OUTPUT'].updateFields()
-
-for feature in joinedLayer['OUTPUT'].getFeatures():
-    joinedLayer['OUTPUT'].dataProvider().setFields(
-        feature.id(),
-        joinedLayer['OUTPUT'].fieldNameIndex('xid'),
-        alphaNumGen(5)
-    )
-
-
-# TODO: need to create a random ID generator for the joinedlayerid
-
 # Add the converted geoLayer to the project for visibility
+# Note: toggle the below line to print out joinedLayer to the map
 QgsProject.instance().addMapLayer(joinedLayer['OUTPUT'])
 
 # *********************************************************
