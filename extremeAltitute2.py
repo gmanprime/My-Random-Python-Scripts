@@ -12,11 +12,11 @@ dmaBoundary = QgsProject.instance().mapLayersByName('DMA_Boundary_V3')[0]
 rasterLayer = QgsProject.instance().mapLayersByName('Addis_Ababa_Elevation')[0]
 
 
-def alphaNumGen(size):
+def alphaNumGen(size=8):
     # get letters as a list
-    letters = string.ascii_letters + string.digits
+    letters = string.ascii_lowercase + string.digits
     # return a random string of chars
-    return ''.join(random.choices(letters, k=size))
+    return ''.join(random.choice(letters) for i in range(size))
 
 
 # *********************************************************
@@ -45,6 +45,8 @@ joinedLayer = processing.run("native:joinattributesbylocation", {
     'OUTPUT': 'TEMPORARY_OUTPUT'
 })
 
+testFeatures = []
+
 # Create a new field called "id" and add it to joinedLayer layer
 xid = QgsField("xid", QVariant.String)
 joinedLayer['OUTPUT'].dataProvider().addAttributes([xid])
@@ -53,12 +55,12 @@ joinedLayer['OUTPUT'].dataProvider().addAttributes([xid])
 joinedLayer['OUTPUT'].updateFields()
 
 for i, feature in enumerate(joinedLayer['OUTPUT'].getFeatures()):
-    feature.setAttribute(2, alphaNumGen(8))
-    # feature['xid'] = alphaNumGen(8)
+    feature.setAttribute('xid', alphaNumGen(8))
     joinedLayer['OUTPUT'].updateFeature(feature)
-
     if i >= 5 and i <= 10:
+        testFeatures.append(feature)
         print(feature.attributes())
+
 
 # Commit the changes
 joinedLayer['OUTPUT'].commitChanges()
