@@ -45,8 +45,6 @@ joinedLayer = processing.run("native:joinattributesbylocation", {
     'OUTPUT': 'TEMPORARY_OUTPUT'
 })
 
-testFeatures = []
-
 # Create a new field called "id" and add it to joinedLayer layer
 xid = QgsField("xid", QVariant.String)
 joinedLayer['OUTPUT'].dataProvider().addAttributes([xid])
@@ -57,12 +55,9 @@ joinedLayer['OUTPUT'].updateFields()
 for i, feature in enumerate(joinedLayer['OUTPUT'].getFeatures()):
     feature.setAttribute('xid', alphaNumGen(8))
     joinedLayer['OUTPUT'].updateFeature(feature)
-    if i >= 5 and i <= 10:
-        testFeatures.append(feature)
-        print(feature.attributes())
-
 
 # Commit the changes
+reproject_adindan(joinedLayer['OUTPUT'])
 joinedLayer['OUTPUT'].commitChanges()
 
 # complete: need to create a random ID generator for the joinedlayer id
@@ -71,6 +66,7 @@ joinedLayer['OUTPUT'].commitChanges()
 # Add the converted geoLayer to the project for visibility
 # Note: toggle the below line to print out joinedLayer to the map
 QgsProject.instance().addMapLayer(joinedLayer['OUTPUT'])
+# QgsProject.instance().addMapLayer(pointLayer['OUTPUT'])
 
 # *********************************************************
 # classify features based on DMA
@@ -99,23 +95,36 @@ outputFeatures = []
 
 # this function can be used to make new features similar in pattern to the above layers
 
+minMaxData = {
+    'min': [],
+    'max': [],
+    'avg': []
+}
+
 for dma in dmaDict:
+    # Lowest point in a DMA
     minFeature = min(dmaDict[dma], key=lambda f: f['elevation'])
+    minMaxData['min'].append(minFeature)
+
+    # Highest point in a DMA
     maxFeature = max(dmaDict[dma], key=lambda f: f['elevation'])
+    minMaxData['max'].append(maxFeature)
 
     # find the feature with the closest elevation to the mean
     meanElevation = sum([f['elevation']
                         for f in dmaDict[dma]]) / len(dmaDict[dma])
 
+    # feature average in hight to min and max values
     avgFeature = min(dmaDict[dma], key=lambda f: abs(
         f['elevation'] - meanElevation))
+    minMaxData['avg'].append(avgFeature)
 
     # create a new feature with the min, max, and average elevation values
     outputFeatures.extend([minFeature, maxFeature, avgFeature])
 
 # Create a new layer from the list of features
-minMaxLayer = QgsVectorLayer("Point?crs=EPSG:20137&memory",
-                             "min max layer", "memory")
+minMaxLayer = QgsVectorLayer(
+    "Point?crs=EPSG:32637&memory", "min max layer", "memory")
 
 # Add the features to the layer
 minMaxLayer.dataProvider().addAttributes(joinedLayer['OUTPUT'].fields())
