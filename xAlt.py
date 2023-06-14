@@ -2,7 +2,7 @@ import processing
 import random
 import string
 from pprint import pprint as pp
-from qgis.core import QgsProject, QgsProcessing, QgsVectorLayer, QgsField
+from qgis.core import QgsProject, QgsProcessing
 
 
 class altRanger():
@@ -15,6 +15,8 @@ class altRanger():
         bfld: The name of the field in the boundary layer that contains the DMA IDs.
     """
 
+    x = []
+
     def __init__(self, raster, boundary, bfld):
         """
         Create a new altRanger object.
@@ -24,16 +26,27 @@ class altRanger():
             boundary: The vector layer containing DMA boundaries.
             bfld: The name of the field in the boundary layer that contains the DMA IDs.
         """
-        # Convert the raster layer to a point layer.
-        self.zLayer = self._zPoints(raster)
 
-        # Set the class variables.
+        # define global variables for definition
+        global zLayer, minmaxFeatures, outputFeatures, groups, layer, minmaxLayer, minMaxData
+
+        # Set the global class variables.
         self.bfld = bfld
-        self.minmaxFeatures = []
+        minmaxFeatures = []
         self.outputFeatures = []
-        self.groups = {}
-        self.layer = self._joinLayers(self.zLayer, boundary, [bfld])
-        self.minmaxLayer = self._genMinMaxLayer()
+        groups = {}
+
+        # Convert the raster layer to a point layer.
+        zLayer = self._zPoints(raster)
+
+        # create a joined layer for further computation and processing
+        layer = self._joinLayers(zLayer, boundary, [bfld])
+
+        # update the empty groups
+        self._groupByBoundary()
+
+        minMaxData = self._genMinMaxVals()
+        minmaxLayer = self._genMinMaxLayer()
 
     def printArr(self, arr):
         """
@@ -90,7 +103,7 @@ class altRanger():
             The joined layer.
         """
         # Print the arguments to the function.
-        self.printArr([zLayer, Boundary, fields])
+        # self.printArr([zLayer, Boundary, fields])
 
         # Join the layers.
         joinedLayer = processing.run("native:joinattributesbylocation", {
@@ -129,10 +142,10 @@ class altRanger():
         The groups are stored in a dictionary, where the key is the DMA ID and the value is a list of features with that ID.
         """
         # Initialize the groups dictionary.
-        groups = self.groups
+        global groups, layer
 
         # Iterate over the features in the layer.
-        for feature in self.layer.getFeatures():
+        for feature in layer.getFeatures():
             # Get the group ID from the feature.
             groupID = feature[self.bfld]
 
@@ -151,7 +164,7 @@ class altRanger():
         """
 
         # Initialize the groups dictionary.
-        groups = self.groups
+        global groups, outputFeatures
 
         # Initialize the minMaxData dictionary.
         minMaxData = {
@@ -185,9 +198,31 @@ class altRanger():
             minMaxData['avg'].append(avgFeature)
 
             # create a new feature with the min, max, and average elevation values
-            self.outputFeatures.extend([minFeature, maxFeature, avgFeature])
+            outputFeatures.extend([minFeature, maxFeature, avgFeature])
 
         return minMaxData
+
+    def randomSample(self, compList, size=5):
+        """
+        Extracts a random sample from a list of objects
+
+        Args:
+            size (Int): the size of the list of objects to extract,
+            compList (list): the list of objects to extract from
+        returns:
+            sampleList (list): a random sample list
+        """
+
+        # length of the list of possible range
+        max_len = len(compList) - 1
+
+        # pick a random index number from the length of the list
+        rangeStart = random.randrange(0, max_len)
+
+        # add the size to the starting index to get the last index
+        rangeEnd = rangeStart + size
+
+        return compList[rangeStart:rangeEnd]
 
     def _genMinMaxLayer(self):
         """
@@ -196,8 +231,7 @@ class altRanger():
         The new layer has the same crs as the input layer.
         """
         # Get the fields from the input layer.
-        layer = self.layer
-        outputFeatures = self.outputFeatures
+        global layer, outputFeatures
 
         # Create a new layer from the list of features
         minMaxLayer = QgsVectorLayer(
@@ -210,13 +244,15 @@ class altRanger():
         # Update the layer schema
         minMaxLayer.updateFields()
 
+        # sample and print the value of outputFeatures
+        pp(self.randomSample(outputFeatures, 20))
+
         minMaxLayer.dataProvider().addFeatures(outputFeatures)
 
         return minMaxLayer
 
     def mapLayers(self):
-        layer = self.layer
-        minmaxLayer = self.minmaxLayer
+        global layer, minmaxLayer
 
         if (layer):
             # add Layers to map after commit
@@ -227,11 +263,10 @@ class altRanger():
             QgsProject.instance().addMapLayer(minmaxLayer)
 
 
-def main():
+def main(rasterName, boundaryName):
     # get raster and boundary layer
-    dmaBoundary = QgsProject.instance().mapLayersByName('DMA_Boundary_V3')[0]
-    rasterLayer = QgsProject.instance().mapLayersByName(
-        'Addis_Ababa_Elevation')[0]
+    dmaBoundary = QgsProject.instance().mapLayersByName(rasterName)[0]
+    rasterLayer = QgsProject.instance().mapLayersByName(boundaryName)[0]
 
     # create a ranger object for computing min max and average values
     rng = altRanger(rasterLayer, dmaBoundary, 'DMA')
@@ -239,8 +274,5 @@ def main():
     # add the resulting layers to map
     rng.mapLayers()
 
-    # check the validity of the ranger object rng
-    print(rng)
 
-
-main()  # run everything
+main("DMA_Boundary_V3", "Addis_Ababa_Elevation")  # run everything
