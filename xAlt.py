@@ -243,6 +243,8 @@ class altRanger():
 
         # Update the layer schema
         minMaxLayer.updateFields()
+        
+        #! this is where the bug is
 
         # sample and print the value of outputFeatures
         pp(self.randomSample(outputFeatures, 20))
