@@ -254,13 +254,6 @@ class altRanger():
 
         return minMaxLayer
 
-    def _addAttrib():
-        """
-        Args:
-            Layer: the layer to which we are adding the attribute type
-            
-        """
-
     def mapLayers(self):
         global layer, minmaxLayer
 
