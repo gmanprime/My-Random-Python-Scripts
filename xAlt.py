@@ -164,7 +164,7 @@ class altRanger():
         """
 
         # Initialize the groups dictionary.
-        global groups, outputFeatures
+        global groups
 
         # Initialize the minMaxData dictionary.
         minMaxData = {
@@ -198,7 +198,7 @@ class altRanger():
             minMaxData['avg'].append(avgFeature)
 
             # create a new feature with the min, max, and average elevation values
-            outputFeatures.extend([minFeature, maxFeature, avgFeature])
+            self.outputFeatures.extend([minFeature, maxFeature, avgFeature])
 
         return minMaxData
 
@@ -231,7 +231,8 @@ class altRanger():
         The new layer has the same crs as the input layer.
         """
         # Get the fields from the input layer.
-        global layer, outputFeatures
+        global layer
+        outputFeatures = self.outputFeatures
 
         # Create a new layer from the list of features
         minMaxLayer = QgsVectorLayer(
@@ -243,7 +244,7 @@ class altRanger():
 
         # Update the layer schema
         minMaxLayer.updateFields()
-        
+
         #! this is where the bug is
 
         # sample and print the value of outputFeatures
@@ -252,6 +253,13 @@ class altRanger():
         minMaxLayer.dataProvider().addFeatures(outputFeatures)
 
         return minMaxLayer
+
+    def _addAttrib():
+        """
+        Args:
+            Layer: the layer to which we are adding the attribute type
+            
+        """
 
     def mapLayers(self):
         global layer, minmaxLayer
