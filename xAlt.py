@@ -4,6 +4,12 @@ import string
 from pprint import pprint as pp
 from qgis.core import QgsProject, QgsProcessing
 
+# note: need to add a kind of functionality where the min, max and avg nature of the points is indicated by
+# note: an attribute value found in "class" field.
+# !:    ths issue is that i cant seem to update the features in a layer with the changed ones containing the
+# !:    new attribute value in 'class'. i can add the field header of class and its columns, but not the 
+# !:    valued for those fields
+
 
 class altRanger():
     """
@@ -48,6 +54,7 @@ class altRanger():
         minMaxData = self._genMinMaxVals()
         minmaxLayer = self._genMinMaxLayer()
 
+    # print out arrays in line by line format
     def printArr(self, arr):
         """
         Print the contents of an array.
@@ -58,6 +65,7 @@ class altRanger():
         for item in arr:
             pp(item)
 
+    # generates alphanumeric numbers of default size 8 for ID purposes
     def _alphaNumGen(self, size=8):
         """
         Generate a random alphanumeric string of the specified length.
@@ -73,6 +81,7 @@ class altRanger():
         # return a random string of chars
         return ''.join(random.choice(letters) for i in range(size))
 
+    # extracts the altitude values as points from a given raster
     def _zPoints(self, raster):
         """
         Create a point layer from a raster layer.
@@ -90,6 +99,8 @@ class altRanger():
             'OUTPUT': 'TEMPORARY_OUTPUT'
         })['OUTPUT']
 
+    # joins two layer one as the content and the other as the boundary assigning the boundary
+    # ID to the content features
     def _joinLayers(self, zLayer, Boundary, fields=[]):
         """
         Join two layers based on geolocation intersection
@@ -135,6 +146,7 @@ class altRanger():
         # Return the joined layer.
         return joinedLayer['OUTPUT']
 
+    # creates a dictionary of features grouped by a boundary Identifier
     def _groupByBoundary(self):
         """
         Groups the features in the layer by their groups ID.
@@ -156,6 +168,8 @@ class altRanger():
             # Add the feature to the list for the DMA ID.
             groups[groupID].append(feature)
 
+    # takes a grouped set of features in the form of a dictionary and returns the highest, lowest and average
+    # height value from each group of features as a single list of features for layer insertion
     def _genMinMaxVals(self):
         """
         Calculates the minimum, maximum, and average elevation for each group of features.
@@ -202,28 +216,8 @@ class altRanger():
 
         return minMaxData
 
-    def randomSample(self, compList, size=5):
-        """
-        Extracts a random sample from a list of objects
-
-        Args:
-            size (Int): the size of the list of objects to extract,
-            compList (list): the list of objects to extract from
-        returns:
-            sampleList (list): a random sample list
-        """
-
-        # length of the list of possible range
-        max_len = len(compList) - 1
-
-        # pick a random index number from the length of the list
-        rangeStart = random.randrange(0, max_len)
-
-        # add the size to the starting index to get the last index
-        rangeEnd = rangeStart + size
-
-        return compList[rangeStart:rangeEnd]
-
+    # creates a Layer that then reintegrates a list of features into said layer.
+    #  this version is specifically for min and max point computation
     def _genMinMaxLayer(self):
         """
         Create a new layer containing the minimum, maximum, and average elevation for each DMA.
@@ -254,6 +248,30 @@ class altRanger():
 
         return minMaxLayer
 
+    # returns a random sample of size "size" from a list
+    def randomSample(self, compList, size=5):
+        """
+        Extracts a random sample from a list of objects
+
+        Args:
+            size (Int): the size of the list of objects to extract,
+            compList (list): the list of objects to extract from
+        returns:
+            sampleList (list): a random sample list
+        """
+
+        # length of the list of possible range
+        max_len = len(compList) - 1
+
+        # pick a random index number from the length of the list
+        rangeStart = random.randrange(0, max_len)
+
+        # add the size to the starting index to get the last index
+        rangeEnd = rangeStart + size
+
+        return compList[rangeStart:rangeEnd]
+
+    # sends the completed layers to QGIS map functionality
     def mapLayers(self):
         global layer, minmaxLayer
 
@@ -266,6 +284,7 @@ class altRanger():
             QgsProject.instance().addMapLayer(minmaxLayer)
 
 
+# main function called on start of this code
 def main(rasterName, boundaryName):
     # get raster and boundary layer
     dmaBoundary = QgsProject.instance().mapLayersByName(rasterName)[0]
@@ -278,4 +297,5 @@ def main(rasterName, boundaryName):
     rng.mapLayers()
 
 
+# call of main function
 main("DMA_Boundary_V3", "Addis_Ababa_Elevation")  # run everything
