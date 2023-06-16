@@ -133,9 +133,12 @@ class altRanger():
         # Create a new field called "xid" and add it to joinedLayer layer
         xid = QgsField("xid", QVariant.String)
         classField = QgsField("class", QVariant.String)
+        x_field = QgsField('X', QVariant.Double)
+        y_field = QgsField('Y', QVariant.Double)
 
         # add the fields from above to the joined layer
-        joinedLayer['OUTPUT'].dataProvider().addAttributes([xid, classField])
+        joinedLayer['OUTPUT'].dataProvider().addAttributes(
+            [xid, classField, x_field, y_field])
 
         # update fields for the joinedlayer in order to get changes from above
         joinedLayer['OUTPUT'].updateFields()
@@ -239,18 +242,31 @@ class altRanger():
 
         # Add the features to the layer
         minMaxLayer.dataProvider().addAttributes(
-            layer.fields())
+            layer.fields()
+        )
+
+        minMaxLayer.dataProvider().addAttributes(
+            [
+                QgsField('X', QVariant.Double),
+                QgsField('Y', QVariant.Double)
+            ]
+        )
 
         # Update the layer schema
         minMaxLayer.updateFields()
 
         # sample and print the value of outputFeatures
-        pp(self.randomSample(outputFeatures, 20))
+        pp(self.randomSample(outputFeatures, 5))
 
         minmaxFeatures = []
 
-        for i, feature in enumerate(outputFeatures):
+        for feature in outputFeatures:
             new_xid = feature['DMA'] + '_' + feature['class']
+
+            # set feature values
+            feature.setAttribute('X', feature.geometry().asPoint().x())
+            feature.setAttribute('Y', feature.geometry().asPoint().y())
+
             feature.setAttribute('xid', new_xid)
             minmaxFeatures.append(feature)
 
@@ -258,8 +274,72 @@ class altRanger():
 
         return minMaxLayer
 
+    def refactor(self):
+        global minmaxLayer, orderedLayer
+        refactored = processing.run("native:refactorfields", {
+            'INPUT': minmaxLayer,
+            'FIELDS_MAPPING': [
+                {
+                    'expression': '"xid"',
+                    'length': 0,
+                    'name': 'xid',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 10,
+                    'type_name': 'text'
+                },
+                {
+                    'expression': '"DMA"',
+                    'length': 254,
+                    'name': 'DMA',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 10,
+                    'type_name': 'text'
+                },
+                {
+                    'expression': '"class"',
+                    'length': 0,
+                    'name': 'class',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 10,
+                    'type_name': 'text'
+                },
+                {
+                    'expression': '"X"',
+                    'length': 0,
+                    'name': 'X',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 6,
+                    'type_name': 'double precision'
+                },
+                {
+                    'expression': '"Y"',
+                    'length': 0,
+                    'name': 'Y',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 6,
+                    'type_name': 'double precision'
+                },
+                {
+                    "expression": '"elevation"',
+                    "length": 20,
+                    "name": "elevation",
+                    "precision": 8,
+                    "sub_type": 0,
+                    "type": 6,
+                    "type_name": "double precision"
+                }
+            ],
+            "OUTPUT": "TEMPORARY_OUTPUT"
+        })
+        orderedLayer = refactored['OUTPUT']
     # takes a feature and adds the specified info to the specified field in the feature
     # returns a feature afterwards
+
     def addToFeature(self, feature, field, value):
         feature.setAttribute(field, value)
         return feature
@@ -289,7 +369,9 @@ class altRanger():
 
     # sends the completed layers to QGIS map functionality
     def mapLayers(self):
-        global minmaxLayer, layer
+        global minmaxLayer, layer, orderedLayer
+
+        self.refactor()  # reorder the layers fields
 
         if (layer):
             # Add the layer to the current project
@@ -298,6 +380,10 @@ class altRanger():
         if (minmaxLayer):
             # Add the layer to the current project
             QgsProject.instance().addMapLayer(minmaxLayer)
+
+        if (orderedLayer):
+            # Add the layer to the current project
+            QgsProject.instance().addMapLayer(orderedLayer)
 
 
 # main function called on start of this code
