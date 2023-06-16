@@ -162,13 +162,13 @@ class altRanger():
             # generate starting ID
             new_xid = self._alphaNumGen(8)
 
-            # checks weather an xid is already taken, if so, retry
-            while (True):
-                if (new_xid not in taken_xid):
-                    taken_xid.append(new_xid)
-                    break
-                else:
-                    new_xid = self._alphaNumGen(8)
+            # # checks weather an xid is already taken, if so, retry
+            # while (True):
+            #     if (new_xid not in taken_xid):
+            #         taken_xid.append(new_xid)
+            #         break
+            #     else:
+            #         new_xid = self._alphaNumGen(8)
 
             feature.setAttribute('xid', new_xid)
 
@@ -286,7 +286,14 @@ class altRanger():
         # sample and print the value of outputFeatures
         pp(self.randomSample(outputFeatures, 20))
 
-        minMaxLayer.dataProvider().addFeatures(outputFeatures)
+        minmaxFeatures = []
+
+        for i, feature in enumerate(outputFeatures):
+            new_xid = feature['DMA'] + '_' + feature['class']
+            feature.setAttribute('xid', new_xid)
+            minmaxFeatures.append(feature)
+
+        minMaxLayer.dataProvider().addFeatures(minmaxFeatures)
 
         return minMaxLayer
 
