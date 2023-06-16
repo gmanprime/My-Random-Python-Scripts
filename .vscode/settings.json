@@ -10,6 +10,7 @@
 		"joinattributesbylocation",
 		"joinedlayer",
 		"Maxdata",
-		"minmax"
+		"minmax",
+		"Qgis"
 	]
 }

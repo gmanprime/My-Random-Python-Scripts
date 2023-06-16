@@ -4,6 +4,14 @@ import string
 from pprint import pprint as pp
 from qgis.core import QgsProject, QgsProcessing
 
+# note: need to add a kind of functionality where the min, max and avg nature of the points is indicated by
+# note: an attribute value found in "class" field.
+# !:    ths issue is that i cant seem to update the features in a layer with the changed ones containing the
+# !:    new attribute value in 'class'. i can add the field header of class and its columns, but not the
+# !:    valued for those fields
+# complete: I solved the issue by creating a new layer and adding the updated features to that layer instead.
+# warning: now need to remove the already existing redundant layer from the RAM
+
 
 class altRanger():
     """
@@ -15,8 +23,7 @@ class altRanger():
         bfld: The name of the field in the boundary layer that contains the DMA IDs.
     """
 
-    x = []
-
+    # function run at the initialization of this object
     def __init__(self, raster, boundary, bfld):
         """
         Create a new altRanger object.
@@ -48,6 +55,7 @@ class altRanger():
         minMaxData = self._genMinMaxVals()
         minmaxLayer = self._genMinMaxLayer()
 
+    # print out arrays in line by line format
     def printArr(self, arr):
         """
         Print the contents of an array.
@@ -58,6 +66,7 @@ class altRanger():
         for item in arr:
             pp(item)
 
+    # generates alphanumeric numbers of default size 8 for ID purposes
     def _alphaNumGen(self, size=8):
         """
         Generate a random alphanumeric string of the specified length.
@@ -73,6 +82,7 @@ class altRanger():
         # return a random string of chars
         return ''.join(random.choice(letters) for i in range(size))
 
+    # extracts the altitude values as points from a given raster
     def _zPoints(self, raster):
         """
         Create a point layer from a raster layer.
@@ -90,6 +100,8 @@ class altRanger():
             'OUTPUT': 'TEMPORARY_OUTPUT'
         })['OUTPUT']
 
+    # joins two layer one as the content and the other as the boundary assigning the boundary
+    # ID to the content features
     def _joinLayers(self, zLayer, Boundary, fields=[]):
         """
         Join two layers based on geolocation intersection
@@ -102,6 +114,7 @@ class altRanger():
         Returns:
             The joined layer.
         """
+
         # Print the arguments to the function.
         # self.printArr([zLayer, Boundary, fields])
 
@@ -119,15 +132,16 @@ class altRanger():
 
         # Create a new field called "xid" and add it to joinedLayer layer
         xid = QgsField("xid", QVariant.String)
-        joinedLayer['OUTPUT'].dataProvider().addAttributes([xid])
+        classField = QgsField("class", QVariant.String)
+        x_field = QgsField('X', QVariant.Double)
+        y_field = QgsField('Y', QVariant.Double)
+
+        # add the fields from above to the joined layer
+        joinedLayer['OUTPUT'].dataProvider().addAttributes(
+            [xid, classField, x_field, y_field])
 
         # update fields for the joinedlayer in order to get changes from above
         joinedLayer['OUTPUT'].updateFields()
-
-        # Iterate over the features in the joined layer and assign them a random ID.
-        for i, feature in enumerate(joinedLayer['OUTPUT'].getFeatures()):
-            feature.setAttribute('xid', self._alphaNumGen(8))
-            joinedLayer['OUTPUT'].updateFeature(feature)
 
         # Commit the changes to the joined layer.
         joinedLayer['OUTPUT'].commitChanges()
@@ -135,6 +149,7 @@ class altRanger():
         # Return the joined layer.
         return joinedLayer['OUTPUT']
 
+    # creates a dictionary of features grouped by a boundary Identifier
     def _groupByBoundary(self):
         """
         Groups the features in the layer by their groups ID.
@@ -156,6 +171,8 @@ class altRanger():
             # Add the feature to the list for the DMA ID.
             groups[groupID].append(feature)
 
+    # takes a grouped set of features in the form of a dictionary and returns the highest, lowest and average
+    # height value from each group of features as a single list of features for layer insertion
     def _genMinMaxVals(self):
         """
         Calculates the minimum, maximum, and average elevation for each group of features.
@@ -164,7 +181,7 @@ class altRanger():
         """
 
         # Initialize the groups dictionary.
-        global groups, outputFeatures
+        global groups
 
         # Initialize the minMaxData dictionary.
         minMaxData = {
@@ -192,16 +209,142 @@ class altRanger():
             avgFeature = min(groups[groupID], key=lambda f: abs(
                 f['elevation'] - meanElevation))
 
+            # note:  this is where the features should be updated to have the values in class
+            minFeature = self.addToFeature(minFeature, 'class', 'min')
+            maxFeature = self.addToFeature(maxFeature, 'class', 'max')
+            avgFeature = self.addToFeature(avgFeature, 'class', 'avg')
+
             # Add the minimum, maximum, and average elevation to the minMaxData dictionary.
             minMaxData['min'].append(minFeature)
             minMaxData['max'].append(maxFeature)
             minMaxData['avg'].append(avgFeature)
 
             # create a new feature with the min, max, and average elevation values
-            outputFeatures.extend([minFeature, maxFeature, avgFeature])
+            self.outputFeatures.extend([minFeature, maxFeature, avgFeature])
 
         return minMaxData
 
+    # creates a Layer that then reintegrates a list of features into said layer.
+    #  this version is specifically for min and max point computation
+    def _genMinMaxLayer(self):
+        """
+        Create a new layer containing the minimum, maximum, and average elevation for each DMA.
+
+        The new layer has the same crs as the input layer.
+        """
+        # Get the fields from the input layer.
+        global layer
+        outputFeatures = self.outputFeatures
+
+        # Create a new layer from the list of features
+        minMaxLayer = QgsVectorLayer(
+            "Point?crs=EPSG:32637&memory", "minmax layer", "memory")
+
+        # Add the features to the layer
+        minMaxLayer.dataProvider().addAttributes(
+            layer.fields()
+        )
+
+        minMaxLayer.dataProvider().addAttributes(
+            [
+                QgsField('X', QVariant.Double),
+                QgsField('Y', QVariant.Double)
+            ]
+        )
+
+        # Update the layer schema
+        minMaxLayer.updateFields()
+
+        # sample and print the value of outputFeatures
+        pp(self.randomSample(outputFeatures, 5))
+
+        minmaxFeatures = []
+
+        for feature in outputFeatures:
+            new_xid = feature['DMA'] + '_' + feature['class']
+
+            # set feature values
+            feature.setAttribute('X', feature.geometry().asPoint().x())
+            feature.setAttribute('Y', feature.geometry().asPoint().y())
+
+            feature.setAttribute('xid', new_xid)
+            minmaxFeatures.append(feature)
+
+        minMaxLayer.dataProvider().addFeatures(minmaxFeatures)
+
+        return minMaxLayer
+
+    def refactor(self):
+        global minmaxLayer, orderedLayer
+        refactored = processing.run("native:refactorfields", {
+            'INPUT': minmaxLayer,
+            'FIELDS_MAPPING': [
+                {
+                    'expression': '"xid"',
+                    'length': 0,
+                    'name': 'xid',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 10,
+                    'type_name': 'text'
+                },
+                {
+                    'expression': '"DMA"',
+                    'length': 254,
+                    'name': 'DMA',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 10,
+                    'type_name': 'text'
+                },
+                {
+                    'expression': '"class"',
+                    'length': 0,
+                    'name': 'class',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 10,
+                    'type_name': 'text'
+                },
+                {
+                    'expression': '"X"',
+                    'length': 0,
+                    'name': 'X',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 6,
+                    'type_name': 'double precision'
+                },
+                {
+                    'expression': '"Y"',
+                    'length': 0,
+                    'name': 'Y',
+                    'precision': 0,
+                    'sub_type': 0,
+                    'type': 6,
+                    'type_name': 'double precision'
+                },
+                {
+                    "expression": '"elevation"',
+                    "length": 20,
+                    "name": "elevation",
+                    "precision": 8,
+                    "sub_type": 0,
+                    "type": 6,
+                    "type_name": "double precision"
+                }
+            ],
+            "OUTPUT": "TEMPORARY_OUTPUT"
+        })
+        orderedLayer = refactored['OUTPUT']
+    # takes a feature and adds the specified info to the specified field in the feature
+    # returns a feature afterwards
+
+    def addToFeature(self, feature, field, value):
+        feature.setAttribute(field, value)
+        return feature
+
+    # returns a random sample of size "size" from a list
     def randomSample(self, compList, size=5):
         """
         Extracts a random sample from a list of objects
@@ -224,48 +367,32 @@ class altRanger():
 
         return compList[rangeStart:rangeEnd]
 
-    def _genMinMaxLayer(self):
-        """
-        Create a new layer containing the minimum, maximum, and average elevation for each DMA.
-
-        The new layer has the same crs as the input layer.
-        """
-        # Get the fields from the input layer.
-        global layer, outputFeatures
-
-        # Create a new layer from the list of features
-        minMaxLayer = QgsVectorLayer(
-            "Point?crs=EPSG:32637&memory", "minmax layer", "memory")
-
-        # Add the features to the layer
-        minMaxLayer.dataProvider().addAttributes(
-            layer.fields())
-
-        # Update the layer schema
-        minMaxLayer.updateFields()
-        
-        #! this is where the bug is
-
-        # sample and print the value of outputFeatures
-        pp(self.randomSample(outputFeatures, 20))
-
-        minMaxLayer.dataProvider().addFeatures(outputFeatures)
-
-        return minMaxLayer
-
+    # sends the completed layers to QGIS map functionality
     def mapLayers(self):
-        global layer, minmaxLayer
+        global minmaxLayer, layer, orderedLayer
 
-        if (layer):
-            # add Layers to map after commit
-            QgsProject.instance().addMapLayer(layer)
+        self.refactor()  # reorder the layers fields
 
-        if (minmaxLayer):
+        # if (layer):
+        #     # Add the layer to the current project
+        #     QgsProject.instance().addMapLayer(layer)
+
+        # if (minmaxLayer):
+        #     # Add the layer to the current project
+        #     QgsProject.instance().addMapLayer(minmaxLayer)
+
+        if (orderedLayer):
             # Add the layer to the current project
-            QgsProject.instance().addMapLayer(minmaxLayer)
+            QgsProject.instance().addMapLayer(orderedLayer)
+
+        QgsProject.instance().removeMapLayer(layer)
+        QgsProject.instance().removeMapLayer(minmaxLayer)
 
 
+# main function called on start of this code
 def main(rasterName, boundaryName):
+    global rng
+
     # get raster and boundary layer
     dmaBoundary = QgsProject.instance().mapLayersByName(rasterName)[0]
     rasterLayer = QgsProject.instance().mapLayersByName(boundaryName)[0]
@@ -277,4 +404,5 @@ def main(rasterName, boundaryName):
     rng.mapLayers()
 
 
+# call of main function
 main("DMA_Boundary_V3", "Addis_Ababa_Elevation")  # run everything
