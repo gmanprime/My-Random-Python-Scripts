@@ -7,8 +7,10 @@ from qgis.core import QgsProject, QgsProcessing
 # note: need to add a kind of functionality where the min, max and avg nature of the points is indicated by
 # note: an attribute value found in "class" field.
 # !:    ths issue is that i cant seem to update the features in a layer with the changed ones containing the
-# !:    new attribute value in 'class'. i can add the field header of class and its columns, but not the 
+# !:    new attribute value in 'class'. i can add the field header of class and its columns, but not the
 # !:    valued for those fields
+# complete: I solved the issue by creating a new layer and adding the updated features to that layer instead.
+# warning: now need to remove the already existing redundant layer from the RAM
 
 
 class altRanger():
@@ -21,8 +23,7 @@ class altRanger():
         bfld: The name of the field in the boundary layer that contains the DMA IDs.
     """
 
-    x = []
-
+    # function run at the initialization of this object
     def __init__(self, raster, boundary, bfld):
         """
         Create a new altRanger object.
@@ -34,7 +35,7 @@ class altRanger():
         """
 
         # define global variables for definition
-        global zLayer, minmaxFeatures, outputFeatures, groups, layer, minmaxLayer, minMaxData
+        global zLayer, minmaxFeatures, outputFeatures, groups, layer, minmaxLayer, minMaxData, elevationLayer
 
         # Set the global class variables.
         self.bfld = bfld
@@ -113,6 +114,10 @@ class altRanger():
         Returns:
             The joined layer.
         """
+
+        # source the global elevationLayer object to this method
+        global elevationLayer
+
         # Print the arguments to the function.
         # self.printArr([zLayer, Boundary, fields])
 
@@ -130,17 +135,51 @@ class altRanger():
 
         # Create a new field called "xid" and add it to joinedLayer layer
         xid = QgsField("xid", QVariant.String)
-        joinedLayer['OUTPUT'].dataProvider().addAttributes([xid])
+        classField = QgsField("class", QVariant.String)
+
+        # add the fields from above to the joined layer
+        joinedLayer['OUTPUT'].dataProvider().addAttributes([xid, classField])
 
         # update fields for the joinedlayer in order to get changes from above
         joinedLayer['OUTPUT'].updateFields()
 
+        # create a new QgsVectorLayer and assign that to the elevationLayer variable
+        elevationLayer = QgsVectorLayer(
+            "Point?crs=EPSG:32637&memory", "Elevation Layer", "memory")
+
+        # add fields from the source layer to the elevation layer
+        elevationLayer.dataProvider().addAttributes(
+            joinedLayer['OUTPUT'].fields()
+        )
+
+        elevationLayer.updateFields()
+
+        # set xid's
+        taken_xid = []
+
         # Iterate over the features in the joined layer and assign them a random ID.
         for i, feature in enumerate(joinedLayer['OUTPUT'].getFeatures()):
-            feature.setAttribute('xid', self._alphaNumGen(8))
+            # generate starting ID
+            new_xid = self._alphaNumGen(8)
+
+            # checks weather an xid is already taken, if so, retry
+            while (True):
+                if (new_xid not in taken_xid):
+                    taken_xid.append(new_xid)
+                    break
+                else:
+                    new_xid = self._alphaNumGen(8)
+
+            feature.setAttribute('xid', new_xid)
+
+            # add the feature with the new fields to elevation layer
+            elevationLayer.dataProvider().addFeatures([feature])
             joinedLayer['OUTPUT'].updateFeature(feature)
 
         # Commit the changes to the joined layer.
+
+        elevationLayer.commitChanges()
+        elevationLayer.updateExtents()
         joinedLayer['OUTPUT'].commitChanges()
 
         # Return the joined layer.
@@ -154,10 +193,10 @@ class altRanger():
         The groups are stored in a dictionary, where the key is the DMA ID and the value is a list of features with that ID.
         """
         # Initialize the groups dictionary.
-        global groups, layer
+        global groups, elevationLayer
 
         # Iterate over the features in the layer.
-        for feature in layer.getFeatures():
+        for feature in elevationLayer.getFeatures():
             # Get the group ID from the feature.
             groupID = feature[self.bfld]
 
@@ -206,6 +245,11 @@ class altRanger():
             avgFeature = min(groups[groupID], key=lambda f: abs(
                 f['elevation'] - meanElevation))
 
+            # note:  this is where the features should be updated to have the values in class
+            minFeature = self.addToFeature(minFeature, 'class', 'min')
+            maxFeature = self.addToFeature(maxFeature, 'class', 'max')
+            avgFeature = self.addToFeature(avgFeature, 'class', 'avg')
+
             # Add the minimum, maximum, and average elevation to the minMaxData dictionary.
             minMaxData['min'].append(minFeature)
             minMaxData['max'].append(maxFeature)
@@ -225,7 +269,7 @@ class altRanger():
         The new layer has the same crs as the input layer.
         """
         # Get the fields from the input layer.
-        global layer
+        global layer, elevationLayer
         outputFeatures = self.outputFeatures
 
         # Create a new layer from the list of features
@@ -234,12 +278,10 @@ class altRanger():
 
         # Add the features to the layer
         minMaxLayer.dataProvider().addAttributes(
-            layer.fields())
+            elevationLayer.fields())
 
         # Update the layer schema
         minMaxLayer.updateFields()
-
-        #! this is where the bug is
 
         # sample and print the value of outputFeatures
         pp(self.randomSample(outputFeatures, 20))
@@ -247,6 +289,12 @@ class altRanger():
         minMaxLayer.dataProvider().addFeatures(outputFeatures)
 
         return minMaxLayer
+
+    # takes a feature and adds the specified info to the specified field in the feature
+    # returns a feature afterwards
+    def addToFeature(self, feature, field, value):
+        feature.setAttribute(field, value)
+        return feature
 
     # returns a random sample of size "size" from a list
     def randomSample(self, compList, size=5):
@@ -273,11 +321,13 @@ class altRanger():
 
     # sends the completed layers to QGIS map functionality
     def mapLayers(self):
-        global layer, minmaxLayer
+        global minmaxLayer, elevationLayer, layer
+        # clean up joined Layer
+        # QgsProject.instance().removeMapLayer(layer.id())
 
-        if (layer):
-            # add Layers to map after commit
-            QgsProject.instance().addMapLayer(layer)
+        if (elevationLayer):
+            # Add the layer to the current project
+            QgsProject.instance().addMapLayer(elevationLayer)
 
         if (minmaxLayer):
             # Add the layer to the current project
@@ -286,6 +336,8 @@ class altRanger():
 
 # main function called on start of this code
 def main(rasterName, boundaryName):
+    global rng
+
     # get raster and boundary layer
     dmaBoundary = QgsProject.instance().mapLayersByName(rasterName)[0]
     rasterLayer = QgsProject.instance().mapLayersByName(boundaryName)[0]
