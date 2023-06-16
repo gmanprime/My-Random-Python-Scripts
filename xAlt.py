@@ -35,7 +35,7 @@ class altRanger():
         """
 
         # define global variables for definition
-        global zLayer, minmaxFeatures, outputFeatures, groups, layer, minmaxLayer, minMaxData, elevationLayer
+        global zLayer, minmaxFeatures, outputFeatures, groups, layer, minmaxLayer, minMaxData
 
         # Set the global class variables.
         self.bfld = bfld
@@ -115,9 +115,6 @@ class altRanger():
             The joined layer.
         """
 
-        # source the global elevationLayer object to this method
-        global elevationLayer
-
         # Print the arguments to the function.
         # self.printArr([zLayer, Boundary, fields])
 
@@ -143,43 +140,7 @@ class altRanger():
         # update fields for the joinedlayer in order to get changes from above
         joinedLayer['OUTPUT'].updateFields()
 
-        # create a new QgsVectorLayer and assign that to the elevationLayer variable
-        elevationLayer = QgsVectorLayer(
-            "Point?crs=EPSG:32637&memory", "Elevation Layer", "memory")
-
-        # add fields from the source layer to the elevation layer
-        elevationLayer.dataProvider().addAttributes(
-            joinedLayer['OUTPUT'].fields()
-        )
-
-        elevationLayer.updateFields()
-
-        # set xid's
-        taken_xid = []
-
-        # Iterate over the features in the joined layer and assign them a random ID.
-        for i, feature in enumerate(joinedLayer['OUTPUT'].getFeatures()):
-            # generate starting ID
-            new_xid = self._alphaNumGen(8)
-
-            # # checks weather an xid is already taken, if so, retry
-            # while (True):
-            #     if (new_xid not in taken_xid):
-            #         taken_xid.append(new_xid)
-            #         break
-            #     else:
-            #         new_xid = self._alphaNumGen(8)
-
-            feature.setAttribute('xid', new_xid)
-
-            # add the feature with the new fields to elevation layer
-            elevationLayer.dataProvider().addFeatures([feature])
-            joinedLayer['OUTPUT'].updateFeature(feature)
-
         # Commit the changes to the joined layer.
-
-        elevationLayer.commitChanges()
-        elevationLayer.updateExtents()
         joinedLayer['OUTPUT'].commitChanges()
 
         # Return the joined layer.
@@ -193,10 +154,10 @@ class altRanger():
         The groups are stored in a dictionary, where the key is the DMA ID and the value is a list of features with that ID.
         """
         # Initialize the groups dictionary.
-        global groups, elevationLayer
+        global groups, layer
 
         # Iterate over the features in the layer.
-        for feature in elevationLayer.getFeatures():
+        for feature in layer.getFeatures():
             # Get the group ID from the feature.
             groupID = feature[self.bfld]
 
@@ -269,7 +230,7 @@ class altRanger():
         The new layer has the same crs as the input layer.
         """
         # Get the fields from the input layer.
-        global layer, elevationLayer
+        global layer
         outputFeatures = self.outputFeatures
 
         # Create a new layer from the list of features
@@ -278,7 +239,7 @@ class altRanger():
 
         # Add the features to the layer
         minMaxLayer.dataProvider().addAttributes(
-            elevationLayer.fields())
+            layer.fields())
 
         # Update the layer schema
         minMaxLayer.updateFields()
@@ -328,13 +289,11 @@ class altRanger():
 
     # sends the completed layers to QGIS map functionality
     def mapLayers(self):
-        global minmaxLayer, elevationLayer, layer
-        # clean up joined Layer
-        # QgsProject.instance().removeMapLayer(layer.id())
+        global minmaxLayer, layer
 
-        if (elevationLayer):
+        if (layer):
             # Add the layer to the current project
-            QgsProject.instance().addMapLayer(elevationLayer)
+            QgsProject.instance().addMapLayer(layer)
 
         if (minmaxLayer):
             # Add the layer to the current project
