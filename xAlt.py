@@ -373,17 +373,20 @@ class altRanger():
 
         self.refactor()  # reorder the layers fields
 
-        if (layer):
-            # Add the layer to the current project
-            QgsProject.instance().addMapLayer(layer)
+        # if (layer):
+        #     # Add the layer to the current project
+        #     QgsProject.instance().addMapLayer(layer)
 
-        if (minmaxLayer):
-            # Add the layer to the current project
-            QgsProject.instance().addMapLayer(minmaxLayer)
+        # if (minmaxLayer):
+        #     # Add the layer to the current project
+        #     QgsProject.instance().addMapLayer(minmaxLayer)
 
         if (orderedLayer):
             # Add the layer to the current project
             QgsProject.instance().addMapLayer(orderedLayer)
+
+        QgsProject.instance().removeMapLayer(layer)
+        QgsProject.instance().removeMapLayer(minmaxLayer)
 
 
 # main function called on start of this code
