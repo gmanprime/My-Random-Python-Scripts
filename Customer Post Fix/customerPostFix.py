@@ -14,9 +14,10 @@ QgsProject = qgs.QgsProject
 
 class customerPostFix():
 
-    def __init__(self, layerName):
+    def __init__(self, layerName, checkFields):
         # Initializes the class object
         global projectCrs, features, layer
+        self.checkFields = checkFields
 
         self.outputLayer = QgsVectorLayer("Point", "MyLayer", "memory")
         layer = QgsProject.instance().mapLayersByName(layerName)[0]
@@ -58,103 +59,20 @@ class customerPostFix():
         ]
 
     def _subsetCheck(self, l1, l2):
+        d1 = True
+        d2 = True
+
         # one way check for subset
         for val in l1:
             if val not in l2:
-                return False
+                d1 = False
+
         # other way check for subset
         for val in l2:
             if val not in l1:
-                return False
-        return True
+                d2 = False
 
-    def scan(self, feature):
-        """
-        this function takes in a feature and returns weather said feature is viable for 
-        data correction and postfix operations
-        """
-        global layer
-        target_fields_cons = self.target_fields_cons
-        target_fields_diam = self.target_fields_diam
-
-        validity = False
-
-        # default structure for features being checked
-        ref = [
-            'fid',
-            'CUSTOMERKE',
-            'INST_KEY',
-            'CONTRACT_NUMBER',
-            'CHARGE_GROUP',
-            'ROUTE_KEY',
-            'WALK_ORDER',
-            'LATTITUDE',
-            'LONGITUDE',
-            'ALTITUDE',
-            'CUST_NAME',
-            'CHARGE_GRO',
-            'TOTAL_CONS',
-            'METER_DIAM',
-            'WEREDA_AAWSA_DB',
-            'HOUSE_NUMB',
-            'S_CITY_AAWSA_DB',
-            'OLD_WEREDA',
-            'OLD_KEBELE',
-            'Sub_city_2022',
-            'Woreda_2022',
-            'Date Added',
-            'Date modified',
-            'Editor',
-            'MeterNo',
-            'customerAd',
-            'customerBr',
-            'routeId',
-            'Zone',
-            'DMA',
-            'Date Created',
-            'D_Accuracy',
-            'Jan 2022_TOT_CONS',
-            'Jan 2022_M_DIAMETER',
-            'Feb 2022_TOT_CONS',
-            'Feb 2022_M_DIAMETER',
-            'Mar 2022_TOT_CONS',
-            'Mar 2022_M_DIAMETER',
-            'Apr 2022_TOT_CONS',
-            'Apr 2022_M_DIAMETER',
-            'May 2022_TOT_CONS',
-            'May 2022_M_DIAMETER',
-            'June 2022_TOT_CONS',
-            'June 2022_M_DIAMETER',
-            'Aug 2022_TOT_CONS',
-            'Aug 2022_M_DIAMETER',
-            'Sep 2022_TOT_CONS',
-            'Sep 2022_M_DIAMETER',
-            'Oct 2022_TOT_CONS',
-            'Oct 2022_M_DIAMETER',
-            'Nov 2022_TOT_CONS',
-            'Nov 2022_M_DIAMETER',
-            'Dec 2022_TOT_CONS',
-            'Dec 2022_M_DIAMETER',
-            'Shift_Code',
-            'Name',
-            'Description',
-            'Water Distribution',
-            'AAWSA Delineation'
-        ]
-
-        # check if inserted feature is correct type
-        if (self._subsetCheck(ref, feature.fields().names())):
-            for name in target_fields_cons:
-                if (feature[name] != None):
-                    validity = True
-
-            for name in target_fields_diam:
-                if (feature[name] != None):
-                    validity = True
-        else:
-            print("This feature is not supported, use features from the 'Customer_Assigned_Billing_Data_2022_DMA_Intermitent' layer")
-
-        return validity
+        return d1 or d2
 
     def featurePrint(self, feature):
         """
@@ -170,6 +88,53 @@ class customerPostFix():
 
         for i, key in enumerate(keys):
             print(key, ': ', values[i])
+
+    def featureValidity(self, feature):
+        """
+        this function takes in a feature and returns weather said feature is viable for 
+        data correction and postfix operations
+        """
+        global layer
+        target_fields_cons = self.target_fields_cons
+        target_fields_diam = self.target_fields_diam
+        checkFields = self.checkFields
+
+        validity = False
+
+        # check if inserted feature is correct type
+        if (self._subsetCheck(checkFields, feature.fields().names())):
+            for name in target_fields_cons:
+                if (feature[name] != None):
+                    validity = True
+
+            for name in target_fields_diam:
+                if (feature[name] != None):
+                    validity = True
+        else:
+            print("This feature is not supported, use features from the 'Customer_Assigned_Billing_Data_2022_DMA_Intermitent' layer")
+
+        return validity
+
+    def copyPaste(self, feature):
+        """
+        this method checks weather a value for a given set of attributes is the same in all the attributes and copies it
+        to fields with None or null values
+
+        Args:
+            feature (QgsFeature): QGIS layer feature under processing
+        """
+        checkFields = self.checkFields
+        # check weather a feature is valid
+
+        if (self.featureValidity(feature)):
+            # contains all relevant values
+            values = []
+
+            # extracts relevant values from the feature
+            for key in checkFields:
+                values.append(feature[key])
+
+            pp(values)
 
     def postulate(self, attributes):
         """
@@ -207,8 +172,70 @@ def killRun(process, kill_time):
 
 def main():
     global fixr
+    checkFields = [
+        # 'fid',
+        # 'CUSTOMERKE',
+        # 'INST_KEY',
+        # 'CONTRACT_NUMBER',
+        # 'CHARGE_GROUP',
+        # 'ROUTE_KEY',
+        # 'WALK_ORDER',
+        # 'LATTITUDE',
+        # 'LONGITUDE',
+        # 'ALTITUDE',
+        # 'CUST_NAME',
+        # 'CHARGE_GRO',
+        # 'TOTAL_CONS',
+        # 'METER_DIAM',
+        # 'WEREDA_AAWSA_DB',
+        # 'HOUSE_NUMB',
+        # 'S_CITY_AAWSA_DB',
+        # 'OLD_WEREDA',
+        # 'OLD_KEBELE',
+        # 'Sub_city_2022',
+        # 'Woreda_2022',
+        # 'Date Added',
+        # 'Date modified',
+        # 'Editor',
+        # 'MeterNo',
+        # 'customerAd',
+        # 'customerBr',
+        # 'routeId',
+        # 'Zone',
+        # 'DMA',
+        # 'Date Created',
+        # 'D_Accuracy',
+        'Jan 2022_TOT_CONS',
+        'Jan 2022_M_DIAMETER',
+        'Feb 2022_TOT_CONS',
+        'Feb 2022_M_DIAMETER',
+        'Mar 2022_TOT_CONS',
+        'Mar 2022_M_DIAMETER',
+        'Apr 2022_TOT_CONS',
+        'Apr 2022_M_DIAMETER',
+        'May 2022_TOT_CONS',
+        'May 2022_M_DIAMETER',
+        'June 2022_TOT_CONS',
+        'June 2022_M_DIAMETER',
+        'Aug 2022_TOT_CONS',
+        'Aug 2022_M_DIAMETER',
+        'Sep 2022_TOT_CONS',
+        'Sep 2022_M_DIAMETER',
+        'Oct 2022_TOT_CONS',
+        'Oct 2022_M_DIAMETER',
+        'Nov 2022_TOT_CONS',
+        'Nov 2022_M_DIAMETER',
+        'Dec 2022_TOT_CONS',
+        'Dec 2022_M_DIAMETER',
+        # 'Shift_Code',
+        # 'Name',
+        # 'Description',
+        # 'Water Distribution',
+        # 'AAWSA Delineation'
+    ]
+
     fixr = customerPostFix(
-        'Customer_Assigned_Billing_Data_2022_DMA_Intermitent')
+        'Customer_Assigned_Billing_Data_2022_DMA_Intermitent', checkFields)
 
 
 main()
