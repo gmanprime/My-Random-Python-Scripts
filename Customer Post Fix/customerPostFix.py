@@ -1,6 +1,7 @@
 import qgis.core as qgs
 import multiprocessing
 import time
+import re
 import collections.abc as cc
 from pprint import pprint as pp
 
@@ -124,17 +125,30 @@ class customerPostFix():
             feature (QgsFeature): QGIS layer feature under processing
         """
         checkFields = self.checkFields
+
+        # consumption ID pattern
+        rePattern = r"\w+ \w+\_DIAMETER$"
+        flags = re.IGNORECASE | re.MULTILINE | re.DOTALL
+
+        # will contains all relevant values
+        values = []
+
         # check weather a feature is valid
-
         if (self.featureValidity(feature)):
-            # contains all relevant values
-            values = []
-
             # extracts relevant values from the feature
             for key in checkFields:
-                values.append(feature[key])
+                # check if field is a Diameter field using regex
+                if re.match(rePattern, key, flags):
+                    # append value to values array if it is a diameter field
+                    values.append(feature[key])
+        else:
+            values.append(False)
 
-            pp(values)
+        # NOTE: ive got the diameter values extracted from the diameter fields
+        # NOTE: now i have to check weather all the values that are not NONE have the same value
+        # NOTE: then i have to return the value that matches, if it doesnt match then return a list with FALSE
+
+        pp(values)
 
     def postulate(self, attributes):
         """
@@ -171,7 +185,7 @@ def killRun(process, kill_time):
 
 
 def main():
-    global fixr
+    global fixr, checkFields
     checkFields = [
         # 'fid',
         # 'CUSTOMERKE',
