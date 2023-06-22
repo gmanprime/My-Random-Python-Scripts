@@ -1,16 +1,12 @@
-import qgis.core as qgs
+from qgis.core import QgsFeature, QgsVectorLayer, QgsCoordinateReferenceSystem as QCRS
+from qgis.core import QgsField, QgsGeometry, QgsProject, QgsFields
+from PyQt5.QtCore import QVariant as QVar
 import multiprocessing
+import statistics as stat
 import time
 import re
 import collections.abc as cc
 from pprint import pprint as pp
-
-
-QgsVectorLayer = qgs.QgsVectorLayer
-QCRS = qgs.QgsCoordinateReferenceSystem
-QgsField = qgs.QgsField
-QgsGeometry = qgs.QgsGeometry
-QgsProject = qgs.QgsProject
 
 
 class customerPostFix():
@@ -116,6 +112,29 @@ class customerPostFix():
 
         return validity
 
+    def cleanList(self, FullList, criteria):
+        """
+        This function takes a list of values returns a list with values that meet the criteria added as a lambda functions to
+
+        Args:
+            FullList (list): LIst of items that need to be filtered out
+            criteria (lambda function): function that returns a Truth value for If condition
+
+        Returns:
+            List: List of filtered values based on the lambda function
+        """
+        cleanList = []
+        for value in FullList:
+            if type(criteria(value)) is not bool:
+                print(
+                    "The conditional lambda function is not a bool conditional function")
+                cleanList = []
+                break
+
+            if criteria(value):
+                cleanList.append(value)
+        return cleanList
+
     def copyPaste(self, feature):
         """
         this method checks weather a value for a given set of attributes is the same in all the attributes and copies it
@@ -148,7 +167,43 @@ class customerPostFix():
         # NOTE: now i have to check weather all the values that are not NONE have the same value
         # NOTE: then i have to return the value that matches, if it doesnt match then return a list with FALSE
 
-        pp(values)
+        cleanList = self.cleanList(
+            values, lambda val: type(val) is not QVar
+        )
+
+        diam = stat.mode(cleanList)
+
+        oldGeom = feature.geometry()
+        newFeature = QgsFeature()
+        newFeature.setGeometry(oldGeom)
+        newFields = QgsFields()
+
+        for fieldName in feature.fields().names():
+            print(fieldName, ": ", QVar(feature[fieldName]).type())
+            if (fieldName in checkFields):
+                newFields.append(
+                    QgsField(
+                        fieldName,
+                        # feature.fields().field(fieldName).type(),
+                        QVar.nameToType('float'),
+                        float(diam)
+                    )
+                )
+
+            elif (fieldName == 'fid'):
+                pass
+            else:
+                newFields.append(
+                    QgsField(
+                        fieldName,
+                        # !: This is where the error is. mismatch between the value and type definition
+                        QVar(feature[fieldName]).type(),
+                        QVar(feature[fieldName]).value()
+                    )
+                )
+
+        self.newFeature = newFeature
+        return newFeature
 
     def postulate(self, attributes):
         """
