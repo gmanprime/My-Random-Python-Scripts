@@ -178,6 +178,8 @@ class customerPostFix():
         newFeature.setGeometry(oldGeom)
         newFields = QgsFields()
 
+        # WARNING: Need to use filtered checkFields for only diameter pipe values
+
         for fieldName in feature.fields().names():
             print(fieldName, ": ", QVar(feature[fieldName]).type())
             if (fieldName in checkFields):
@@ -185,8 +187,7 @@ class customerPostFix():
                     QgsField(
                         fieldName,
                         # feature.fields().field(fieldName).type(),
-                        QVar.nameToType('float'),
-                        float(diam)
+                        QVar(float(diam)).type()
                     )
                 )
 
@@ -198,9 +199,18 @@ class customerPostFix():
                         fieldName,
                         # !: This is where the error is. mismatch between the value and type definition
                         QVar(feature[fieldName]).type(),
-                        QVar(feature[fieldName]).value()
+                        # QVar(feature[fieldName]).value()
                     )
                 )
+        newFeature.setFields(newFields)
+
+        for fieldName in newFeature.fields().names():
+            if (fieldName in checkFields):
+                newFeature[fieldName] = QVar(float(diam)).value()
+            elif (fieldName == 'fid'):
+                pass
+            else:
+                newFeature[fieldName] = QVar(feature[fieldName]).value()
 
         self.newFeature = newFeature
         return newFeature
