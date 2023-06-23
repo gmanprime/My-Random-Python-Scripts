@@ -27,7 +27,6 @@ class customerPostFix():
         projectCrs = QCRS("EPSG:20137")
 
         self.target_fields_cons = [
-
             'Jan 2022_M_DIAMETER',
             'Feb 2022_M_DIAMETER',
             'Mar 2022_M_DIAMETER',
@@ -143,7 +142,7 @@ class customerPostFix():
         Args:
             feature (QgsFeature): QGIS layer feature under processing
         """
-        checkFields = self.checkFields
+        refFields = self.target_fields_cons
 
         # consumption ID pattern
         rePattern = r"\w+ \w+\_DIAMETER$"
@@ -155,7 +154,7 @@ class customerPostFix():
         # check weather a feature is valid
         if (self.featureValidity(feature)):
             # extracts relevant values from the feature
-            for key in checkFields:
+            for key in refFields:
                 # check if field is a Diameter field using regex
                 if re.match(rePattern, key, flags):
                     # append value to values array if it is a diameter field
@@ -163,7 +162,7 @@ class customerPostFix():
         else:
             values.append(False)
 
-        # NOTE: ive got the diameter values extracted from the diameter fields
+        # NOTE: I've got the diameter values extracted from the diameter fields
         # NOTE: now i have to check weather all the values that are not NONE have the same value
         # NOTE: then i have to return the value that matches, if it doesnt match then return a list with FALSE
 
@@ -181,8 +180,7 @@ class customerPostFix():
         # WARNING: Need to use filtered checkFields for only diameter pipe values
 
         for fieldName in feature.fields().names():
-            print(fieldName, ": ", QVar(feature[fieldName]).type())
-            if (fieldName in checkFields):
+            if (fieldName in refFields):
                 newFields.append(
                     QgsField(
                         fieldName,
@@ -197,21 +195,19 @@ class customerPostFix():
                 newFields.append(
                     QgsField(
                         fieldName,
-                        # !: This is where the error is. mismatch between the value and type definition
-                        QVar(feature[fieldName]).type(),
-                        # QVar(feature[fieldName]).value()
+                        QVar(feature[fieldName]).type()
                     )
                 )
         newFeature.setFields(newFields)
 
         for fieldName in newFeature.fields().names():
-            if (fieldName in checkFields):
+            if (fieldName in refFields):
                 newFeature[fieldName] = QVar(float(diam)).value()
             elif (fieldName == 'fid'):
                 pass
             else:
                 newFeature[fieldName] = QVar(feature[fieldName]).value()
-
+            # print(fieldName, ": ", newFeature[fieldName])
         self.newFeature = newFeature
         return newFeature
 
@@ -220,7 +216,10 @@ class customerPostFix():
         this function generates new data for any input feature based on the features current data and on weather
         its postfix capable
         """
-        pass
+        obsValues = []  # list of values that are obeserved and have a pattern
+        predVals = []  # list of vals that have been predicted
+        # how am i gonna do this?...
+        # maybe use machine learning?
 
     def sumConsumption(self, feature):
         pass
