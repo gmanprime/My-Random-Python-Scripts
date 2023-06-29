@@ -2,7 +2,7 @@ from qgis.core import QgsFeature, QgsVectorLayer, QgsCoordinateReferenceSystem a
 from qgis.core import QgsField, QgsGeometry, QgsProject, QgsFields
 from PyQt5.QtCore import QVariant as QVar
 import multiprocessing
-import statistics as stat
+import statistics as stats
 import time
 import re
 import collections.abc as cc
@@ -111,6 +111,33 @@ class customerPostFix():
 
         return validity
 
+    def featuresFilter(self, field, val):
+        global features
+        filteredList = []
+        for feature in features:
+            if (feature[field] == val):
+                filteredList.append(feature[field])
+
+    def fillAverage(self, feature):
+        """
+        takes in a feature o the customer billing type and returns the average consumption rate for the customer feature
+        """
+
+        global features
+        # List of non null consumption values for feature
+        consRates = []
+
+        # separate consumption null values from list
+        for field in feature.fields():
+            if (field in self.target_fields_cons and feature[field] is not None):
+                consRates.append(feature[field])
+
+        print("the consumption rates are")
+        pp(consRates)
+
+        if (consRates != []):
+            return stats.mean(consRates)
+
     def cleanList(self, FullList, criteria):
         """
         This function takes a list of values returns a list with values that meet the criteria added as a lambda functions to
@@ -122,6 +149,7 @@ class customerPostFix():
         Returns:
             List: List of filtered values based on the lambda function
         """
+
         cleanList = []
         for value in FullList:
             if type(criteria(value)) is not bool:
@@ -211,25 +239,6 @@ class customerPostFix():
         self.newFeature = newFeature
         return newFeature
 
-    def postulate(self, attributes):
-        """
-        this function generates new data for any input feature based on the features current data and on weather
-        its postfix capable
-        """
-        obsValues = []  # list of values that are obeserved and have a pattern
-        predVals = []  # list of vals that have been predicted
-        # how am i gonna do this?...
-        # maybe use machine learning?
-
-    def sumConsumption(self, feature):
-        pass
-
-    def fillIn(self):
-        """
-        This tool will update the new Temp QGIS layer using the list of items generated 
-        by the classify tool
-        """
-
     def mapExport(self):
         """
         will export the output layer to the QGIS map
@@ -249,7 +258,7 @@ def killRun(process, kill_time):
 
 
 def main():
-    global fixr, checkFields
+    global fixr, checkFields, features
     checkFields = [
         # 'fid',
         # 'CUSTOMERKE',
