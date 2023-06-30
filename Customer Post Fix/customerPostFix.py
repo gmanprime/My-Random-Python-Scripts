@@ -1,9 +1,10 @@
 from qgis.core import QgsFeature, QgsVectorLayer, QgsCoordinateReferenceSystem as QCRS
-from qgis.core import QgsField, QgsGeometry, QgsProject, QgsFields
+from qgis.core import QgsField, QgsGeometry, QgsProject, QgsFields, NULL
 from PyQt5.QtCore import QVariant as QVar
 import multiprocessing
 import statistics as stats
 import time
+import random
 import re
 import collections.abc as cc
 from pprint import pprint as pp
@@ -13,10 +14,11 @@ class customerPostFix():
 
     def __init__(self, layerName, checkFields):
         # Initializes the class object
-        global projectCrs, features, layer
+        global projectCrs, features, layer, outputLayer
         self.checkFields = checkFields
 
-        self.outputLayer = QgsVectorLayer("Point", "MyLayer", "memory")
+        outputLayer = QgsVectorLayer(
+            "Point?crs=EPSG:20137&memory", "minmax layer", "memory")
         layer = QgsProject.instance().mapLayersByName(layerName)[0]
         features = []
 
@@ -26,7 +28,7 @@ class customerPostFix():
         # The CRS used in th project overall, in most cases using the Adindan:20137
         projectCrs = QCRS("EPSG:20137")
 
-        self.target_fields_cons = [
+        self.target_fields_diam = [
             'Jan 2022_M_DIAMETER',
             'Feb 2022_M_DIAMETER',
             'Mar 2022_M_DIAMETER',
@@ -40,7 +42,7 @@ class customerPostFix():
             'Dec 2022_M_DIAMETER',
         ]
 
-        self.target_fields_diam = [
+        self.target_fields_cons = [
             'Jan 2022_TOT_CONS',
             'Feb 2022_TOT_CONS',
             'Mar 2022_TOT_CONS',
@@ -91,7 +93,7 @@ class customerPostFix():
         data correction and postfix operations
         """
         global layer
-        target_fields_cons = self.target_fields_cons
+        target_fields_cons = self.target_fields_diam
         target_fields_diam = self.target_fields_diam
         checkFields = self.checkFields
 
@@ -120,23 +122,79 @@ class customerPostFix():
 
     def fillAverage(self, feature):
         """
-        takes in a feature o the customer billing type and returns the average consumption rate for the customer feature
+        takes in a feature of the customer billing type and returns the average consumption rate for the customer feature
         """
 
         global features
+        refFields = self.target_fields_cons
         # List of non null consumption values for feature
         consRates = []
+        average = 0
 
         # separate consumption null values from list
-        for field in feature.fields():
-            if (field in self.target_fields_cons and feature[field] is not None):
-                consRates.append(feature[field])
+        for field in refFields:
+            if (feature[field] != NULL):
+                filteredVals = self.regNumFilter(feature[field])
 
-        print("the consumption rates are")
-        pp(consRates)
+                if filteredVals != []:
+                    consRates.append(
+                        float(
+                            filteredVals[0]
+                        )
+                    )
 
         if (consRates != []):
-            return stats.mean(consRates)
+            average = stats.mean(consRates)
+            # return average
+
+        oldGeom = feature.geometry()
+        newFeature = QgsFeature()
+        newFeature.setGeometry(oldGeom)
+        newFields = QgsFields()
+
+        for fieldName in feature.fields().names():
+            if (fieldName != refFields[-1] and fieldName != self.target_fields_diam[-1]):
+                newFields.append(
+                    QgsField(
+                        fieldName,
+                        QVar(feature[fieldName]).type()
+                    )
+                )
+            else:
+                # add normal field
+                newFields.append(
+                    QgsField(
+                        fieldName,
+                        QVar(feature[fieldName]).type()
+                    )
+                )
+
+                # add averages field
+                newFields.append(
+                    QgsField(
+                        'AVG_CONS',
+                        QVar.Double
+                    )
+                )
+
+        newFeature.setFields(newFields)
+
+        # add the values to the fields
+        for fieldName in newFeature.fields().names():
+            # print(fieldName, ': ',
+            #       average if fieldName not in feature.fields().names() else feature[fieldName])
+
+            if (fieldName == 'fid'):
+                pass
+            elif (fieldName == 'AVG_CONS'):
+                newFeature.setAttribute(fieldName, QVar(average).value())
+                # newFeature[fieldName] = QVar(average).value()
+            else:
+                newFeature.setAttribute(
+                    fieldName, QVar(feature[fieldName]).value())
+                # newFeature[fieldName] = QVar(feature[fieldName]).value()
+
+        return newFeature
 
     def cleanList(self, FullList, criteria):
         """
@@ -170,7 +228,7 @@ class customerPostFix():
         Args:
             feature (QgsFeature): QGIS layer feature under processing
         """
-        refFields = self.target_fields_cons
+        refFields = self.target_fields_diam
 
         # consumption ID pattern
         rePattern = r"\w+ \w+\_DIAMETER$"
@@ -198,7 +256,7 @@ class customerPostFix():
             values, lambda val: type(val) is not QVar
         )
 
-        diam = stat.mode(cleanList)
+        diam = stats.mode(cleanList)
 
         oldGeom = feature.geometry()
         newFeature = QgsFeature()
@@ -230,20 +288,73 @@ class customerPostFix():
 
         for fieldName in newFeature.fields().names():
             if (fieldName in refFields):
-                newFeature[fieldName] = QVar(float(diam)).value()
+                newFeature.setAttribute(fieldName, QVar(float(diam)).value())
+                # newFeature[fieldName] = QVar(float(diam)).value()
             elif (fieldName == 'fid'):
                 pass
             else:
-                newFeature[fieldName] = QVar(feature[fieldName]).value()
-            # print(fieldName, ": ", newFeature[fieldName])
+                newFeature.setAttribute(
+                    fieldName, QVar(feature[fieldName]).value())
+                # newFeature[fieldName] = QVar(feature[fieldName]).value()
         self.newFeature = newFeature
         return newFeature
+
+    def regNumFilter(self, text):
+        pattern = r'^[0-9]+\s*$'
+        matches = []
+
+        if type(text == 'string'):
+            matches = re.findall(pattern, text, re.MULTILINE)
+        else:
+            print('incompatible type of input')
+        return matches
+
+    def randomSample(self, compList, size=5):
+        """
+        Extracts a random sample from a list of objects
+
+        Args:
+            size (Int): the size of the list of objects to extract,
+            compList (list): the list of objects to extract from
+        returns:
+            sampleList (list): a random sample list
+        """
+
+        # length of the list of possible range
+        max_len = len(compList) - 1
+
+        # pick a random index number from the length of the list
+        rangeStart = random.randrange(0, max_len)
+
+        # add the size to the starting index to get the last index
+        rangeEnd = rangeStart + size
+
+        return compList[rangeStart:rangeEnd]
+
+    def addToLayer(self):
+        global layer, outputLayer
+
+        # newFeatures = []
+
+        for feature in features:
+            featProcessing = self.copyPaste(feature)
+            featProcessing = self.fillAverage(featProcessing)
+            # newFeatures.append(featProcessing)
+            outputLayer.dataProvider().addFeature(featProcessing)
+
+        outputLayer.dataProvider().addAttributes(
+            layer.fields()
+        )
+
+        outputLayer.updateFields()
+
+        return outputLayer
 
     def mapExport(self):
         """
         will export the output layer to the QGIS map
         """
-        outputLayer = self.outputLayer
+        global outputLayer
 
         if (outputLayer):
             # Add the layer to the current project
@@ -323,6 +434,9 @@ def main():
 
     fixr = customerPostFix(
         'Customer_Assigned_Billing_Data_2022_DMA_Intermitent', checkFields)
+
+    fixr.addToLayer()
+    fixr.mapExport()
 
 
 main()
