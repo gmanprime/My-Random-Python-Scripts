@@ -17,8 +17,6 @@ class customerPostFix():
         global projectCrs, features, layer, outputLayer
         self.checkFields = checkFields
 
-        outputLayer = QgsVectorLayer(
-            "Point?crs=EPSG:20137&memory", "minmax layer", "memory")
         layer = QgsProject.instance().mapLayersByName(layerName)[0]
         features = []
 
@@ -334,19 +332,29 @@ class customerPostFix():
     def addToLayer(self):
         global layer, outputLayer
 
-        # newFeatures = []
+        outputLayer = QgsVectorLayer(
+            "Point?crs=EPSG:20137&memory", "organized layer", "memory")
+
+        newFeatures = []
 
         for feature in features:
             featProcessing = self.copyPaste(feature)
             featProcessing = self.fillAverage(featProcessing)
-            # newFeatures.append(featProcessing)
-            outputLayer.dataProvider().addFeature(featProcessing)
+
+            newFeatures.append(featProcessing)
+
+        outputLayer.dataProvider().addFeatures(newFeatures)
+
+        self.sample = self.randomSample(newFeatures)
+        pp(self.sample)
 
         outputLayer.dataProvider().addAttributes(
             layer.fields()
         )
 
         outputLayer.updateFields()
+        # Commit the changes to the joined layer.
+        outputLayer.commitChanges()
 
         return outputLayer
 
@@ -358,6 +366,7 @@ class customerPostFix():
 
         if (outputLayer):
             # Add the layer to the current project
+            outputLayer.updateFields()
             QgsProject.instance().addMapLayer(outputLayer)
 
 
