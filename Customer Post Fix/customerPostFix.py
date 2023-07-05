@@ -301,7 +301,7 @@ class customerPostFix():
         pattern = r'^[0-9]+\s*$'
         matches = []
 
-        if type(text == 'string'):
+        if type(text) == str:
             matches = re.findall(pattern, text, re.MULTILINE)
         else:
             print('incompatible type of input')
