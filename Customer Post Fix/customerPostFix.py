@@ -348,6 +348,8 @@ class customerPostFix():
         Returns:
             QgsVectorLayer: Vector Layer containing the complete list of features augmented throughout this object
         """
+        
+        # Note: Maybe if you define the fields from the features insteead of from the layer object in line 372
         global layer, outputLayer
 
         outputLayer = QgsVectorLayer(
