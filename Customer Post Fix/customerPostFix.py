@@ -12,6 +12,7 @@ from pprint import pprint as pp
 
 class customerPostFix():
 
+    # complete:
     def __init__(self, layerName, checkFields):
         # Initializes the class object
         global projectCrs, features, layer, outputLayer
@@ -54,6 +55,7 @@ class customerPostFix():
             'Dec 2022_TOT_CONS',
         ]
 
+# complete
     def _subsetCheck(self, l1, l2):
         d1 = True
         d2 = True
@@ -70,6 +72,7 @@ class customerPostFix():
 
         return d1 or d2
 
+# complete
     def featurePrint(self, feature):
         """
         This function prints the feature's field name, and attribute value on a line and wraps to new line
@@ -85,6 +88,7 @@ class customerPostFix():
         for i, key in enumerate(keys):
             print(key, ': ', values[i])
 
+# complete
     def featureValidity(self, feature):
         """
         this function takes in a feature and returns weather said feature is viable for 
@@ -111,6 +115,7 @@ class customerPostFix():
 
         return validity
 
+# complete
     def featuresFilter(self, field, val):
         global features
         filteredList = []
@@ -118,6 +123,7 @@ class customerPostFix():
             if (feature[field] == val):
                 filteredList.append(feature[field])
 
+# complete
     def fillAverage(self, feature):
         """
         takes in a feature of the customer billing type and returns the average consumption rate for the customer feature
@@ -194,6 +200,7 @@ class customerPostFix():
 
         return newFeature
 
+# complete
     def cleanList(self, FullList, criteria):
         """
         This function takes a list of values returns a list with values that meet the criteria added as a lambda functions to
@@ -218,6 +225,7 @@ class customerPostFix():
                 cleanList.append(value)
         return cleanList
 
+# complete
     def copyPaste(self, feature):
         """
         this method checks weather a value for a given set of attributes is the same in all the attributes and copies it
@@ -297,6 +305,7 @@ class customerPostFix():
         self.newFeature = newFeature
         return newFeature
 
+# complete
     def regNumFilter(self, text):
         pattern = r'^[0-9]+\s*$'
         matches = []
@@ -307,6 +316,7 @@ class customerPostFix():
             print('incompatible type of input')
         return matches
 
+# complete
     def randomSample(self, compList, size=5):
         """
         Extracts a random sample from a list of objects
@@ -329,7 +339,15 @@ class customerPostFix():
 
         return compList[rangeStart:rangeEnd]
 
+# warning
     def addToLayer(self):
+        """
+        This method creates a new layer to map the generated points to the output
+        adds features to the layer from the augmented global variation and commits it to the map
+
+        Returns:
+            QgsVectorLayer: Vector Layer containing the complete list of features augmented throughout this object
+        """
         global layer, outputLayer
 
         outputLayer = QgsVectorLayer(
@@ -358,6 +376,7 @@ class customerPostFix():
 
         return outputLayer
 
+# complete
     def mapExport(self):
         """
         will export the output layer to the QGIS map
