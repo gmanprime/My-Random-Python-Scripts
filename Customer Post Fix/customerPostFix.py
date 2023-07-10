@@ -1,5 +1,5 @@
 from qgis.core import QgsFeature, QgsVectorLayer, QgsCoordinateReferenceSystem as QCRS
-from qgis.core import QgsField, QgsGeometry, QgsProject, QgsFields, NULL
+from qgis.core import QgsField, QgsGeometry, QgsProject, QgsFields, NULL, QgsFeatureIterator
 from PyQt5.QtCore import QVariant as QVar
 import multiprocessing
 import statistics as stats
@@ -185,12 +185,9 @@ class customerPostFix():
 
         # add the values to the fields
         for fieldName in newFeature.fields().names():
-            # print(fieldName, ': ',
-            #       average if fieldName not in feature.fields().names() else feature[fieldName])
-
-            if (fieldName == 'fid'):
-                pass
-            elif (fieldName == 'AVG_CONS'):
+            # if (fieldName == 'fid'):
+            #     pass
+            if (fieldName == 'AVG_CONS'):
                 newFeature.setAttribute(fieldName, QVar(average).value())
                 # newFeature[fieldName] = QVar(average).value()
             else:
@@ -281,8 +278,8 @@ class customerPostFix():
                     )
                 )
 
-            elif (fieldName == 'fid'):
-                pass
+            # elif (fieldName == 'fid'):
+            #     pass
             else:
                 newFields.append(
                     QgsField(
@@ -296,8 +293,8 @@ class customerPostFix():
             if (fieldName in refFields):
                 newFeature.setAttribute(fieldName, QVar(float(diam)).value())
                 # newFeature[fieldName] = QVar(float(diam)).value()
-            elif (fieldName == 'fid'):
-                pass
+            # elif (fieldName == 'fid'):
+            #     pass
             else:
                 newFeature.setAttribute(
                     fieldName, QVar(feature[fieldName]).value())
@@ -348,9 +345,9 @@ class customerPostFix():
         Returns:
             QgsVectorLayer: Vector Layer containing the complete list of features augmented throughout this object
         """
-        
+
         # Note: Maybe if you define the fields from the features insteead of from the layer object in line 372
-        global layer, outputLayer
+        global layer, outputLayer, sample
 
         outputLayer = QgsVectorLayer(
             "Point?crs=EPSG:20137&memory", "organized layer", "memory")
@@ -363,14 +360,14 @@ class customerPostFix():
 
             newFeatures.append(featProcessing)
 
-        outputLayer.dataProvider().addFeatures(newFeatures)
-
-        self.sample = self.randomSample(newFeatures)
-        pp(self.sample)
-
         outputLayer.dataProvider().addAttributes(
             layer.fields()
         )
+
+        outputLayer.dataProvider().addFeatures(newFeatures)
+
+        sample = self.randomSample(newFeatures)
+        pp(sample)
 
         outputLayer.updateFields()
         # Commit the changes to the joined layer.
@@ -389,13 +386,6 @@ class customerPostFix():
             # Add the layer to the current project
             outputLayer.updateFields()
             QgsProject.instance().addMapLayer(outputLayer)
-
-
-def killRun(process, kill_time):
-    p = multiprocessing.Process(target=process)
-    p.start()
-    time.sleep(kill_time)
-    p.terminate()
 
 
 def main():

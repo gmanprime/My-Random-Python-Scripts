@@ -405,4 +405,4 @@ def main(rasterName, boundaryName):
 
 
 # call of main function
-main("DMA_Boundary_V3", "Addis_Ababa_Elevation")  # run everything
+main("DMA_Boundary_V4.2", "Addis_Ababa_Elevation")  # run everything
