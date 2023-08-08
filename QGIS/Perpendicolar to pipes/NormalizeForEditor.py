@@ -17,9 +17,9 @@ class lineSegment:
         # calculate the Y intercept for the line segment from the slope and starting point
         self.b = startPoint.y() - (self.m * startPoint.x())
 
-    def intersects(self, feat):
+    def checkPoint(self, pointFeat):
         """
-        function that computest weather a point Feature intersects the line segment
+        function that computes weather a point Feature intersects the line segment
 
         Args:
             feat (QgsFeature): point feature to conclude intersection with
@@ -28,19 +28,22 @@ class lineSegment:
             Bool: True or false for intersection test
         """
 
-        # check weather the feature is QgsFeature type first
-        # convert the QgsFeature type to point type
-        if type(feat) == QgsFeature:
-            feat = feat.geometry().asPoint()
+        # the line segment is the object itself => self
+        # check point feature type
+        point = None
+        if type(pointFeat) == QgsFeature:
+            # convert QgsFeature into a point object
+            # !: might have an error here
+            point = pointFeat.geometry().asPoint()
 
-            # compute line y value at the points x value
-            Fx = (self.m * feat.x()) + self.b
+        # compute line y value at the points x value
+        Fx = (self.m * point.x()) + self.b
 
-            # check weather the line segment and point are within a small tolerance of eachother
-            if (round(feat.y(), 4) == round(Fx, 4)):
-                return True
-            else:
-                return False
+        # check weather the line segment and point are within a small tolerance of eachother
+        if (round(point.y(), 4) == round(Fx, 4)):
+            return True
+        else:
+            return False
 
     def slope(self):
         return self.m
@@ -54,7 +57,11 @@ def normAngle2(layerName, feature, parent):
     # Get all the line features in the layer.
     lines = project.mapLayersByName(layerName)[0]
 
-    geom = feature.geometry().buffer(0.1, 8)
+    # get the features geometery from the feature and check for null type
+    geom = feature.geometry()
+
+    if not geom.isNull():
+        geom = geom.buffer(0.1, 8)
 
     # Iterate over the line features.
     for line in lines.getFeatures():
@@ -77,7 +84,7 @@ def normAngle2(layerName, feature, parent):
         if i < len(vertices)-1:
             segment = lineSegment(vertex, vertices[i+1])
 
-            if (segment.intersects(feature)):
+            if (segment.checkPoint(feature)):
                 m = segment.slope()
                 angle = deg(tanInv(m))
 
