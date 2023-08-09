@@ -11,7 +11,7 @@ class lineSegment:
         denom = (vertex2.x() - vertex1.x())
         if denom == 0:
             denom = 0.00001
-            
+
         self.m = nom/denom
         self.b = vertex1.y() - (self.m * vertex1.x())
 
@@ -35,6 +35,7 @@ def normAngle(layerName, feature):
     # Get all the line features in the layer.
     lines = project.mapLayersByName(layerName)[0]
 
+    # Note: This seems to work in the function editor
     geom = feature.geometry().buffer(0.1, 8)
 
     # Iterate over the line features.
@@ -61,7 +62,7 @@ def normAngle(layerName, feature):
             if (segment.intersects(feature)):
                 m = segment.slope()
                 angle = deg(tanInv(m))
-    
+
     feature.setAttribute("ROTATION", angle)
     return angle - 90
 
@@ -70,6 +71,6 @@ def normAngle(layerName, feature):
 endCaps = project.mapLayersByName('End Cap')[0]
 for cap in endCaps.getFeatures():
     normAngle('Miya Pipes V2 July 21', cap)
-#selectedCaps = list(endCaps.getSelectedFeatures())
-#vertices = normAngle('Miya Pipes V2 July 21', selectedCaps[0])
-#print(vertices)
+# selectedCaps = list(endCaps.getSelectedFeatures())
+# vertices = normAngle('Miya Pipes V2 July 21', selectedCaps[0])
+# print(vertices)

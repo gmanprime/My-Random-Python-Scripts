@@ -16,6 +16,8 @@ class lineSegment:
 
         # calculate the Y intercept for the line segment from the slope and starting point
         self.b = startPoint.y() - (self.m * startPoint.x())
+        
+    
 
     def checkPoint(self, pointFeat):
         """
@@ -31,6 +33,7 @@ class lineSegment:
         # the line segment is the object itself => self
         # check point feature type
         point = None
+        # Note: the below statment is always true
         if type(pointFeat) == QgsFeature:
             # convert QgsFeature into a point object
             # !: might have an error here
@@ -51,7 +54,6 @@ class lineSegment:
 
 @qgsfunction(group='Custom', referenced_columns=[])
 def normAngle2(layerName, feature, parent):
-    print(feature)
     global lines, line, vertices
 
     # Get all the line features in the layer.
