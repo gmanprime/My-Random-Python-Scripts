@@ -6,7 +6,7 @@ class Node:
 
     def append(self, newNode):
         if type(newNode) == Node:
-            oldNext = self.next                 # extract the old next
+            oldNext = self.next           # extract the old next
             self.next = newNode           # set current next to a new Node element
             if oldNext:
                 # set the previous element of the old next to the new next element
@@ -55,3 +55,6 @@ class Node:
             self.view()
         else:
             self.prev.viewPreceding()
+
+    def viewAll(self):
+        se()

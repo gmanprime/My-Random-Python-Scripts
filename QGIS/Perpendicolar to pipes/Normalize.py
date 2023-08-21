@@ -3,6 +3,7 @@ from qgis.gui import *
 from pprint import pprint as pp
 from numpy import arctan as tanInv, degrees as deg
 from lineSegment import lineSegment
+from linkedList import Node
 
 
 project = QgsProject.instance()
