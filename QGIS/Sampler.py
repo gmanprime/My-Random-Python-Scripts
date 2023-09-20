@@ -9,7 +9,6 @@ class Sampler():
             compList (list): the list of objects to extract from
         returns:
             sampleList (list): a random sample list
-
         """
 
         # length of the list of possible range
